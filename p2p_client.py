@@ -2,7 +2,8 @@ import socket
 import threading
 import json
 import os
-
+import html
+SECRET_KEY = "Iloveec528"
 
 class P2PClient:
     def __init__(self, username):
@@ -20,7 +21,11 @@ class P2PClient:
         # Register client with the discovery server and retrieve the list of peers
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.discovery_server_ip, self.discovery_server_port))
-        registration_info = {"username": self.username, "port": self.listen_port}
+        registration_info = {
+            "username": self.username,
+            "port": self.listen_port,
+            "secret_key": SECRET_KEY  # Add the secret key to the registration info
+        }
         self.socket.send(json.dumps(registration_info).encode('utf-8'))
         self.peers = json.loads(self.socket.recv(1024).decode('utf-8'))
         self.socket.close()
@@ -66,8 +71,13 @@ class P2PClient:
         else:
             self.store_offline_message(peer_username, message)
 
+
+
     def start_chat(self):
         self.refresh_peers()  # Ensure we have the latest list of peers
+        def escape_html(text):
+            """Escape characters for inserting into HTML."""
+            return html.escape(text)
         peer_username = input("Enter the username of the peer you want to chat with: ")
         if peer_username in self.peers:
             print(f"Starting chat with {peer_username}. Type /quit to end the chat.")
@@ -75,7 +85,9 @@ class P2PClient:
                 message = input("Enter your message (/quit to end): ")
                 if message == "/quit":
                     break
-                self.send_message(peer_username, message)
+                # Enhanced sanitization
+                sanitized_message = escape_html(message)
+                self.send_message(peer_username, sanitized_message)
         else:
             print(f"Could not find user {peer_username}. They might be offline.")
             while True:
